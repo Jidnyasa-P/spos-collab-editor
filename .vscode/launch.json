@@ -1,0 +1,46 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Run Server (press F5)",
+      "request": "launch",
+      "mainClass": "com.spos.editor.Server",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "java",
+      "name": "Run Self-Tests",
+      "request": "launch",
+      "mainClass": "com.spos.editor.SelfTests",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "java",
+      "name": "Run Stress Test",
+      "request": "launch",
+      "mainClass": "com.spos.editor.StressTest",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "java",
+      "name": "Run Lock Demo (console)",
+      "request": "launch",
+      "mainClass": "com.spos.editor.LockDemo",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "java",
+      "name": "Run HTTP Load Test (server must be running)",
+      "request": "launch",
+      "mainClass": "com.spos.editor.HttpLoadTest",
+      "args": "http://localhost:8080 30 6 8",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ]
+}

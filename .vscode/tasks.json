@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build",
+      "type": "shell",
+      "windows": { "command": ".\\build.bat" },
+      "linux":   { "command": "sh scripts/build.sh" },
+      "osx":     { "command": "sh scripts/build.sh" },
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run server",
+      "type": "shell",
+      "windows": { "command": ".\\run.bat" },
+      "linux":   { "command": "sh scripts/run.sh" },
+      "osx":     { "command": "sh scripts/run.sh" },
+      "presentation": { "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run all tests",
+      "type": "shell",
+      "windows": { "command": ".\\test.bat" },
+      "linux":   { "command": "sh scripts/test.sh" },
+      "osx":     { "command": "sh scripts/test.sh" },
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Lock demo (console)",
+      "type": "shell",
+      "windows": { "command": ".\\demo.bat" },
+      "linux":   { "command": "sh scripts/build.sh && java -cp out com.spos.editor.LockDemo" },
+      "osx":     { "command": "sh scripts/build.sh && java -cp out com.spos.editor.LockDemo" },
+      "problemMatcher": []
+    }
+  ]
+}

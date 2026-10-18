@@ -1,0 +1,9 @@
+out/
+sources.txt
+*.class
+data/*.db
+data/*.tmp
+.idea/
+*.iml
+.DS_Store
+Thumbs.db

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shared Notes: one editor per section</title>
+  <meta name="description" content="Collaborative editor demonstrating reader-priority synchronization in Java.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2316222c'/%3E%3Ccircle cx='10' cy='11' r='3.2' fill='%230d7a85'/%3E%3Ccircle cx='22' cy='11' r='3.2' fill='%230d7a85'/%3E%3Crect x='8' y='19' width='16' height='5' rx='2' fill='%23e08a3c'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Shared Notes</h1>
+      <p>Everyone can read. One person edits each section.</p>
+    </div>
+    <div class="who">
+      <span id="conn" class="conn" data-state="connecting">Connecting</span>
+      <span id="online" class="muted"></span>
+      <button id="nameBtn" class="chip" type="button" title="Change your name">Name</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section id="doc" aria-label="Document sections">
+      <p id="loading" class="muted">Loading the document...</p>
+    </section>
+
+    <aside class="side" aria-label="Activity and demo controls">
+      <section class="panel">
+        <h2>Activity</h2>
+        <ol id="log" class="log"><li class="muted">Nothing yet.</li></ol>
+      </section>
+
+      <section class="panel">
+        <h2>Slow motion</h2>
+        <p class="hint">Make the lock visible. Longer holds let you see readers overlap and a save wait for them.</p>
+        <label for="readHold">Each read holds the lock for <output id="readHoldOut">0 ms</output></label>
+        <input id="readHold" type="range" min="0" max="5000" step="250" value="0">
+        <label for="writeHold">Each save holds the lock for <output id="writeHoldOut">0 ms</output></label>
+        <input id="writeHold" type="range" min="0" max="5000" step="250" value="0">
+        <button id="resetBtn" class="btn secondary" type="button">Reset document</button>
+      </section>
+
+      <section class="panel">
+        <h2>Reading the markers</h2>
+        <ul class="legend">
+          <li><span class="swatch dot"></span>Each teal dot is one person reading right now.</li>
+          <li><span class="swatch claim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>An amber lock means a section is claimed for editing.</li>
+          <li><span class="swatch full"></span>A solid amber rail means a save is in progress; readers wait.</li>
+        </ul>
+      </section>
+    </aside>
+  </main>
+
+  <dialog id="nameDialog" aria-labelledby="nameTitle">
+    <form method="dialog" id="nameForm">
+      <h2 id="nameTitle">Who are you?</h2>
+      <p class="hint">Other people see this name next to the section you are editing.</p>
+      <label for="nameInput">Your name</label>
+      <input id="nameInput" maxlength="20" autocomplete="off" required>
+      <p id="nameError" class="error" role="alert" hidden>Use 1 to 20 letters, numbers, spaces, dots, dashes or underscores.</p>
+      <button class="btn" type="submit">Start</button>
+    </form>
+  </dialog>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

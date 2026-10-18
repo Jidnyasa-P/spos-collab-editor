@@ -1,0 +1,21 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Build
+        run: sh scripts/build.sh
+      - name: Self tests
+        run: java -cp out com.spos.editor.SelfTests
+      - name: Stress test
+        run: java -cp out com.spos.editor.StressTest

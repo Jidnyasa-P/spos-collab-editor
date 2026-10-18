@@ -1,0 +1,10 @@
+# Render Blueprint: New > Blueprint > pick this repository.
+services:
+  - type: web
+    name: spos-collab-editor
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATA_FILE
+        value: none        # free instances have no permanent disk
