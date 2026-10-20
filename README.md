@@ -7,11 +7,14 @@ synchronization technique: the **Readers-Writers problem with reader priority**,
 * Many people can **read** the same section at the same time.
 * Only **one** person can **edit** a given section at a time.
 * Readers are never blocked by other readers, and they overtake a writer that is only *waiting*.
-* Changes appear on everyone's screen live.
+* Changes appear on everyone's screen live, with the names of the people who are here.
+* A built-in **Race Lab** and a narrated **loaddemo.bat** show, slowly and visibly, what goes wrong *without* the lock and how the lock prevents it.
 
 Built for the SPOS (System Programming and Operating Systems) mini project by two team members.
 
-![Two users, one editing and one locked out](docs/screenshots/03-asha-editing-ravi-locked-out.png)
+| Editor | Race Lab |
+|---|---|
+| ![Editor](docs/screenshots/03-asha-editing-ravi-locked-out.png) | ![Race Lab](docs/screenshots/08-race-lab-result.png) |
 
 ---
 
@@ -25,16 +28,17 @@ Built for the SPOS (System Programming and Operating Systems) mini project by tw
 | Reader entry / exit | `readLock()` / `readUnlock()` |
 | Writer entry / exit | `tryWriteLock(ms)` / `writeUnlock()` |
 | Critical section (the actual change) | the two lines in `Section.commit()` that set `text` and `version` |
-| Starvation of writers (the price of reader priority) | visible with the **Slow motion** sliders in the UI |
+| Race condition without the lock | `RaceLab` (unsafe run): lost updates and inconsistent reads |
+| Starvation of writers (the price of reader priority) | Race Lab with **Busy readers** ticked |
 
 ```mermaid
 flowchart LR
-  B1[Browser 1] & B2[Browser 2] & B3[Browser 3] -->|REST + SSE| S[Java HTTP server]
+  B1[Browser 1] & B2[Browser 2] & B3[Browser 3] -->|REST + optional live stream| S[Java HTTP server]
   S --> D[DocumentStore]
   D --> A[Section 1 + ReaderPriorityLock]
   D --> B[Section 2 + ReaderPriorityLock]
   D --> C[Section N + ReaderPriorityLock]
-  S -. "event: doc / status" .-> B1 & B2 & B3
+  S --> L[RaceLab: same job with and without the lock]
 ```
 
 ### Two layers of protection (why editing does not freeze readers)
@@ -42,9 +46,9 @@ flowchart LR
 If a writer held the write lock for the whole time a person is typing, every reader would freeze for minutes.
 So each section uses two layers:
 
-1. **Edit claim (ownership).** Pressing *Edit* asks for an exclusive claim on that section. It is
-   non-blocking: if someone else holds it you are told who. The claim is a 60-second *lease* that the
-   browser renews every 15 s, so a closed tab cannot lock a section forever.
+1. **Edit claim (ownership).** Pressing *Edit* asks for an exclusive claim on that section. It never blocks:
+   if someone else holds it you are told who. The claim is a 60-second *lease* that the browser renews every
+   15 s, so a closed tab cannot lock a section forever.
 2. **Reader-priority write lock.** Pressing *Save* takes the write lock only for the instant the text
    is replaced. Readers keep seeing the last saved version while you type and are held back only during that instant.
 
@@ -55,30 +59,29 @@ So each section uses two layers:
 ```
 spos-collab-editor/
 ├── src/com/spos/editor/
-│   ├── ReaderPriorityLock.java   Person A  the semaphore algorithm
-│   ├── Section.java              Person A  claim / lease / commit / snapshot
-│   ├── DocumentStore.java        Person A  sections, activity log, save and load
-│   ├── Config.java               Person A  settings
-│   ├── Util.java                 Person A  JSON, form parsing, validation
-│   ├── ApiHandler.java           Person A  REST endpoints
-│   ├── Broadcaster.java          Person A  Server-Sent Events hub
-│   ├── StaticHandler.java        Person A  serves the browser files safely
-│   ├── Server.java               Person A  entry point
-│   ├── SelfTests.java            Person A  27 automated checks
-│   ├── LockDemo.java             Person A  console demo of reader priority
-│   ├── StressTest.java           Person B  in-process stress test
-│   └── HttpLoadTest.java         Person B  load test against a running server
-├── static/                       Person B  index.html, style.css, app.js, config.js
-├── Dockerfile, render.yaml       Person B  deployment
-├── .github/workflows/ci.yml      Person B  automatic build + tests on GitHub
-├── build.bat run.bat test.bat demo.bat loadtest.bat    Windows helpers
+│   ├── ReaderPriorityLock.java   A  the semaphore algorithm
+│   ├── Section.java              A  claim / lease / commit / snapshot
+│   ├── DocumentStore.java        A  sections, activity log, save and load
+│   ├── RaceLab.java              A  the same workload with and without the lock
+│   ├── LabService.java           A  runs Race Lab sessions for the browser
+│   ├── LoadDemo.java             A  narrated console demo (loaddemo.bat)
+│   ├── LockDemo.java             A  console timeline of reader priority
+│   ├── SelfTests.java            A  30 automated checks
+│   ├── ApiHandler.java, Broadcaster.java, StaticHandler.java, Presence.java,
+│   │   Config.java, Util.java, Server.java        A  web layer and wiring
+│   ├── StressTest.java           B  in-process stress test
+│   └── HttpLoadTest.java         B  fast load test against a running server
+├── static/                       B  index.html, lab.html, style.css, app.js, lab.js, common.js, config.js
+├── Dockerfile                    B  optional container build
+├── .github/workflows/ci.yml      B  automatic build + tests on GitHub
+├── build.bat run.bat test.bat demo.bat loaddemo.bat loadtest.bat   Windows helpers
 ├── scripts/*.sh                  Linux / macOS helpers
 ├── .vscode/                      VS Code tasks, launch configs, settings
-└── docs/                         test cases, team workflow, viva questions, screenshots
+└── docs/                         demo guide, test cases, team workflow, viva questions, screenshots
 ```
 
-Both members should be able to explain the whole system. See [docs/TEAM_WORKFLOW.md](docs/TEAM_WORKFLOW.md)
-for the suggested branches and commits for each person and [docs/VIVA_QUESTIONS.md](docs/VIVA_QUESTIONS.md) for practice questions.
+Both members should be able to explain the whole system. See [docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md) for a presenter script,
+[docs/TEAM_WORKFLOW.md](docs/TEAM_WORKFLOW.md) for branches and commits, and [docs/VIVA_QUESTIONS.md](docs/VIVA_QUESTIONS.md) for practice questions.
 
 ---
 
@@ -103,21 +106,17 @@ git --version
 ```
 
 Both Java commands must print version 17 or higher. If `javac` is not recognised, you installed only a JRE or
-the terminal was not reopened. Reinstall the **JDK** and open a new terminal.
-
-Optional: Docker Desktop (`winget install Docker.DockerDesktop`) if you want to test the container locally.
+the terminal was not reopened. Reinstall the **JDK** and open a new terminal. Docker is **not** needed.
 
 ### 3.2 Open the project in VS Code
 
 1. Unzip `spos-collab-editor.zip` to a short path such as `C:\projects\spos-collab-editor`.
 2. Start VS Code, choose **File > Open Folder**, and select the `spos-collab-editor` folder.
 3. When VS Code asks *"Do you want to install the recommended extensions?"*, click **Install**. This installs the
-   **Extension Pack for Java** (`vscjava.vscode-java-pack`). Wait until the status bar at the bottom stops showing a spinner.
+   **Extension Pack for Java**. Wait until the spinner at the bottom of the window stops.
 4. Open `src/com/spos/editor/Server.java`. You should see **Run | Debug** above `main`. If VS Code asks which JDK to use, pick 17.
 
 ### 3.3 Run the application
-
-Pick **one** of these:
 
 | Way | Steps |
 |---|---|
@@ -125,29 +124,20 @@ Pick **one** of these:
 | **Task** | **Terminal > Run Task... > Run server** |
 | **Terminal** | Open **Terminal > New Terminal** and run `.\run.bat` |
 
-You should see:
-
-```
-Build OK. Classes are in the "out" folder.
-Shared Notes is running.
-Open http://localhost:8080 in two or more browser windows.
-```
-
-Open <http://localhost:8080>. Windows may show a firewall prompt the first time; choose **Private networks**.
-To act as a second user, open another browser window (or a private window) and enter a different name.
+You should see `Shared Notes is running.` Open <http://localhost:8080>. Windows may show a firewall prompt the first time;
+choose **Private networks**. To act as a second user, open another window (a private window works well) and enter another name.
 Each tab keeps its own name, so two tabs of the same browser also work as two users.
-
-To let a phone or a classmate on the same Wi-Fi join, run `ipconfig`, find your IPv4 address, and open `http://<that address>:8080`.
 
 ### 3.4 Run the tests and demos
 
-| What | Command | Expected |
+| What | Command | What you see |
 |---|---|---|
-| All automated tests | `.\test.bat` | `27 passed, 0 failed` then `RESULT: PASS` |
-| Console demo of reader priority | `.\demo.bat` | timeline showing a later reader overtaking a waiting writer |
-| Load test (server must be running) | `.\loadtest.bat http://localhost:8080 30 6 8` | `RESULT: PASS (version growth equals successful commits)` |
+| **Guided demo (slow, narrated)** | `.\loaddemo.bat` | Press Enter between four scenes. Add `--auto` to skip the waiting. |
+| All automated tests | `.\test.bat` | `30 passed, 0 failed`, then `RESULT: PASS` |
+| Reader-priority timeline only | `.\demo.bat` | A later reader overtakes a waiting writer |
+| Fast load test (server must be running) | `.\loadtest.bat http://localhost:8080 30 6 8` | Thousands of requests in seconds, then `RESULT: PASS` |
 
-In VS Code you can also use **Terminal > Run Task... > Run all tests**, or the launch configurations in the Run and Debug panel.
+`loadtest.bat` is meant to be fast: it is a benchmark. `loaddemo.bat` is the one to present, because it slows everything down and explains it.
 
 ### 3.5 Common problems
 
@@ -157,31 +147,37 @@ In VS Code you can also use **Terminal > Run Task... > Run all tests**, or the l
 | `Port 8080 already in use` | `set PORT=9090` then `.\run.bat`, and open `http://localhost:9090`. |
 | `release version 17 not supported` | Your JDK is older than 17. Install JDK 17 or newer. |
 | VS Code shows red squiggles on correct code | **Ctrl+Shift+P > Java: Clean Java Language Server Workspace**, then reload. |
-| Browser shows "Reconnecting" | The server stopped, or a proxy blocks event streams. Restart the server; the page reconnects by itself. |
+| Header shows "Reconnecting" | The live stream is unavailable (server stopped, or a tunnel that does not stream). The page keeps working by polling about once a second. |
 | Page looks stale after editing `static/` files | Hard refresh with **Ctrl+F5**. |
 
 ---
 
-## 4. Demo script (2 minutes)
+## 4. Showing that it prevents race conditions (the demo)
 
-1. Open the app in three windows named **Asha**, **Ravi**, **Meera**. All three read all sections together.
-2. In Asha's window press **Edit** on *The rules*. In Ravi's window the same section shows **Asha is editing**.
-3. Ravi presses **Edit** on *The rules* and is refused. Ravi edits a *different* section: no conflict.
-4. Asha saves. Meera's screen updates by itself and the version number goes up.
-5. Turn **Each read holds the lock** up to 4000 ms. Watch teal dots appear on the left rail: those are readers inside the section.
-6. Set **Each save holds the lock** to 3000 ms, save something, and watch the rail turn solid amber while other readers wait.
-7. Run `.\test.bat` and show `no lost updates`. Run `.\demo.bat` to show reader priority in text.
+Full presenter script: [docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md). The short version:
+
+1. **`loaddemo.bat`**: four slow, narrated scenes in the console.
+   *Scene 1* runs 4 writers adding to a shared counter **without a lock** and shows lost updates (for example a final value of 9 instead of 20, with no error reported).
+   *Scene 2* runs the **same job with the lock**: 20 of 20, nothing lost, readers never see half-finished data.
+   *Scene 3* shows reader priority as a timeline. *Scene 4* has eight users claim one section at the same instant over HTTP and exactly one wins.
+2. **Race Lab** (the **Race Lab** link in the page header): the same experiment in the browser, side by side, with moving chips for every reader and writer,
+   live counters, a log of each collision, and a plain-language verdict. Tick **Busy readers** to see writers starve.
+3. **Editor + Slow motion**: two windows, claim the same section, watch the lock, then slow saves down and watch the rail turn solid amber.
+
+How to explain data consistency in one sentence: *every change to a section happens while holding the write lock, so no other writer
+can interleave and no reader can look in the middle; the tests count lost updates and inconsistent reads and both are zero with the lock.*
 
 ---
 
 ## 5. Tests
 
-* `SelfTests` has 27 checks covering the lock (readers share, a reader overtakes a waiting writer, a writer excludes readers, timeouts),
-  claims, commits, lease expiry and heartbeat, JSON and form helpers, and saving and loading the data file.
-* `StressTest` has two parts. Part 1 uses two plain, unprotected integers that writers update one after the other while readers check they are always equal. Any overlap of a reader and a writer would show as a violation. Part 2 has several writers fighting over one section and checks that **successful commits = final version number**.
-* `HttpLoadTest` does the same over HTTP against a running or deployed server.
+* `SelfTests` has 30 checks: the lock (readers share, a reader overtakes a waiting writer, a writer excludes readers, timeouts), claims, commits,
+  lease expiry and heartbeat, **Race Lab** (updates are lost without the lock, none with it), helpers, and saving and loading the data file.
+* `StressTest`, part 1: two plain, unprotected integers that writers update one after the other while readers check they are always equal.
+  Part 2: several writers fight over one section and **successful commits must equal the final version number**.
+* `HttpLoadTest` does the same over HTTP against a running server and compares the growth of the version numbers with the number of `200 OK` commits.
 
-Detailed table: [docs/TEST_CASES.md](docs/TEST_CASES.md). GitHub runs the build and tests on every push (`.github/workflows/ci.yml`).
+Table: [docs/TEST_CASES.md](docs/TEST_CASES.md). GitHub runs the build and tests on every push (`.github/workflows/ci.yml`).
 
 ---
 
@@ -189,16 +185,20 @@ Detailed table: [docs/TEST_CASES.md](docs/TEST_CASES.md). GitHub runs the build 
 
 | Endpoint | Method | Parameters | Result |
 |---|---|---|---|
-| `/api/doc` | GET | none | All sections (text, version). Read through each section's read lock. |
-| `/api/status` | GET | none | Non-blocking lock state per section, activity log, config, tab count. |
-| `/api/events` | GET | none | Server-Sent Events stream: `event: doc` and `event: status`. |
+| `/api/doc` | GET | none | All sections (text, version), read through each section's read lock. |
+| `/api/status` | GET | none | Non-blocking lock state per section, people here, activity log, config. |
+| `/api/events` | GET | none | Optional live stream (Server-Sent Events): `event: doc` and `event: status`. |
 | `/api/claim` | POST | `user`, `section` | `200` granted, `409` locked (with `holder`). |
 | `/api/renew` | POST | `user`, `section` | `200` renewed, `403` expired. |
 | `/api/release` | POST | `user`, `section` | `200`, cancels editing. |
 | `/api/commit` | POST | `user`, `section`, `text` | `200` saved, `403` no claim, `503` readers kept it busy, `413` too long. |
-| `/api/config` | POST | `user`, `readHoldMs`, `writeHoldMs` | Slow-motion demo settings (0 to 5000 ms). |
+| `/api/hello` | POST | `user` | Says "I am here" (people list). |
+| `/api/config` | POST | `user`, `readHoldMs`, `writeHoldMs` | Slow-motion settings (0 to 5000 ms). |
 | `/api/reset` | POST | `user` | Restores the original text. |
-| `/api/health` | GET | none | Used by hosting platforms. |
+| `/api/lab/start` | POST | `writers`, `readers`, `ops`, `step`, `busy` | Starts a Race Lab run, returns its `id`. |
+| `/api/lab/poll` | GET | `id`, `since` | Events, live numbers and, at the end, the results. |
+| `/api/lab/stop` | POST | `id` | Cancels a run. |
+| `/api/health` | GET | none | Health check. |
 
 Names must be 1 to 20 letters, digits, spaces, dots, dashes or underscores. Section text is limited to 5000 characters.
 
@@ -208,42 +208,57 @@ Names must be 1 to 20 letters, digits, spaces, dots, dashes or underscores. Sect
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `PORT` | `8080` | HTTP port (hosts set this for you) |
+| `PORT` | `8080` | HTTP port |
 | `DATA_FILE` | `data/document.db` | Where text is saved. `none` disables saving. |
 | `STATIC_DIR` | `static` | Folder with the browser files |
 | `LEASE_SECONDS` | `60` | Edit-claim lease |
 | `WRITE_WAIT_MS` | `5000` | How long a save waits for readers before `503` |
-| `READ_HOLD_MS`, `WRITE_HOLD_MS` | `0` | Demo slow motion at startup |
+| `READ_HOLD_MS`, `WRITE_HOLD_MS` | `0` | Slow motion at startup |
 | `ALLOWED_ORIGIN` | `*` | CORS origin if the frontend is hosted separately |
 
-PowerShell example: `$env:PORT=9090; .\run.bat`  &nbsp;|&nbsp;  Command Prompt: `set PORT=9090` then `run.bat`.
+PowerShell example: `$env:PORT=9090; .\run.bat`  |  Command Prompt: `set PORT=9090` then `run.bat`.
 
 ---
 
-## 8. Deploy for free
+## 8. Making it public for free (no Docker, no card needed)
 
-### Option A: Render (Docker), recommended
+A Java server cannot run on GitHub Pages (that only hosts static files), and free Docker hosting has become unreliable
+(see 8.4). The simplest honest approach for a viva is to **run the server on your own laptop** and let people reach it.
 
-1. Push the project to a GitHub repository (see section 9).
-2. Create a free account at <https://render.com> and choose **New > Blueprint** (it reads `render.yaml`),
-   or **New > Web Service**, connect the repo, runtime **Docker**, instance type **Free**.
-3. Wait for the build. Open the URL Render gives you. Share it with your classmates and demo from your phone.
+### 8.1 Same Wi-Fi or phone hotspot (best for a live viva)
 
-Notes: free instances may go to sleep when idle (the first request after a pause can take a while) and have
-no permanent disk, so the text resets on restart. That is why `render.yaml` sets `DATA_FILE=none`.
-Open the URL a few minutes before your presentation. Free-tier rules change, so check Render's current terms.
+Run `ipconfig`, find your **IPv4 Address** (for example `192.168.1.23`), start the server, and open
+`http://192.168.1.23:8080` on any phone or laptop on the same network. Allow Java through the firewall on **Private networks**.
+No account, no internet, nothing to install.
 
-### Option B: split hosting
-
-Host `static/` on GitHub Pages or Netlify, the Java server on Render, and put the server URL in `static/config.js`
-(`window.API_BASE = "https://your-app.onrender.com"`). CORS is already enabled.
-
-### Test the container locally
+### 8.2 A public https link with ngrok (free account, no card)
 
 ```powershell
-docker build -t spos-collab-editor .
-docker run --rm -p 8080:8080 spos-collab-editor
+winget install Ngrok.Ngrok
+ngrok config add-authtoken <your-token-from-the-ngrok-dashboard>
+ngrok http 8080
 ```
+
+Share the `https://...ngrok...` address it prints. The live stream works through it. Free-plan limits and terms change, so check ngrok's current terms.
+
+### 8.3 A public https link with Cloudflare Quick Tunnel (no account)
+
+```powershell
+winget install Cloudflare.cloudflared
+cloudflared tunnel --url http://localhost:8080
+```
+
+Share the `https://...trycloudflare.com` address. Cloudflare's documentation says quick tunnels do not support Server-Sent Events,
+so the header will show "Reconnecting". **The app still works**: it automatically polls about once a second, and the Race Lab already uses polling.
+
+While you share a link, your laptop must stay awake and the server must keep running. Anyone with the link can use the app, so stop the tunnel when you are done.
+
+### 8.4 About free cloud hosting
+
+When I checked in October 2026, several sources reported that Render and Koyeb now ask for a card, that Fly.io is no longer free, and that
+Hugging Face Docker Spaces moved to a paid plan; a few smaller hosts advertise card-free free tiers but I have not verified them.
+Policies change often. A `Dockerfile` is included (`docker build -t spos-collab-editor .` then `docker run --rm -p 8080:8080 spos-collab-editor`)
+in case you or your college already have a hosting account. For the project it is optional.
 
 ---
 
@@ -274,15 +289,15 @@ Open a Pull Request, let the other person review, and merge. Details and a start
 
 ## 10. Known limitations
 
-* **Writer starvation** is inherent to reader priority: under a constant stream of readers a save can time out with `503`. The UI explains this and the sliders let you provoke it on purpose.
+* **Writer starvation** is inherent to reader priority: under a constant stream of readers a save can time out with `503`. The Race Lab shows it on purpose.
 * Locking is per section, not per character, so two people cannot type in the same paragraph together.
-* No accounts: names are self-declared and can be impersonated.
-* Text is kept in memory and in one small file; a free host that restarts loses it.
+* No accounts: names are self-declared and can be impersonated. The demo controls (slow motion, reset) are open to everyone who can reach the server.
+* Text is kept in memory and in one small file on the host.
 * One server process only; this is a teaching project for tens of users, not thousands.
 
 ## 11. Future scope
 
-Writer-priority or fair variants (compare with the same stress test), a database, real login and roles,
+Writer-priority or fair variants (compare them in the Race Lab), a database, real login and roles,
 WebSockets, character-level co-editing (Operational Transformation or CRDTs), version history with undo, and a distributed lock for several servers.
 
 ## 12. References
@@ -292,6 +307,7 @@ WebSockets, character-level co-editing (Operational Transformation or CRDTs), ve
 3. Courtois, Heymans, Parnas, "Concurrent Control with 'Readers' and 'Writers'", *Communications of the ACM* 14(10), 1971.
 4. Oracle, Java SE 17 API: `java.util.concurrent.Semaphore`, `com.sun.net.httpserver`.
 5. MDN Web Docs, *Using server-sent events*.
+6. Cloudflare Docs, *Quick Tunnels* (limitations).
 
 ## License
 

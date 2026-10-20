@@ -16,6 +16,8 @@ public class ApiHandler implements HttpHandler {
 
     private final DocumentStore store;
     private final Broadcaster bc;
+    private final Presence presence = new Presence();
+    private final LabService lab = new LabService();
 
     public ApiHandler(DocumentStore store, Broadcaster bc) {
         this.store = store;
@@ -53,6 +55,10 @@ public class ApiHandler implements HttpHandler {
                 case "/api/commit"  -> { need(method, "POST"); commit(ex, params(ex)); }
                 case "/api/config"  -> { need(method, "POST"); config(ex, params(ex)); }
                 case "/api/reset"   -> { need(method, "POST"); reset(ex, params(ex)); }
+                case "/api/hello"   -> { need(method, "POST"); presence.touch(user(params(ex))); reply(ex, 200, "{\"result\":\"OK\"}"); }
+                case "/api/lab/start" -> { need(method, "POST"); labStart(ex, params(ex)); }
+                case "/api/lab/poll"  -> { need(method, "GET");  labPoll(ex, params(ex)); }
+                case "/api/lab/stop"  -> { need(method, "POST"); labStop(ex, params(ex)); }
                 default -> throw new HttpError(404, "NOT_FOUND");
             }
         } catch (HttpError e) {
@@ -144,6 +150,32 @@ public class ApiHandler implements HttpHandler {
         reply(ex, 200, "{\"result\":\"OK\",\"skipped\":" + skipped + "}");
     }
 
+    // ---------------------------------------------------------------- Race Lab
+    private static int intParam(Map<String, String> p, String key, int fallback) throws HttpError {
+        String v = p.get(key);
+        if (v == null || v.isBlank()) return fallback;
+        try { return Integer.parseInt(v.trim()); } catch (NumberFormatException e) { throw new HttpError(400, "BAD_NUMBER"); }
+    }
+
+    private void labStart(HttpExchange ex, Map<String, String> p) throws Exception {
+        RaceLab.Params params = new RaceLab.Params(intParam(p, "writers", 4), intParam(p, "readers", 3),
+                intParam(p, "ops", 6), intParam(p, "step", 120), "1".equals(p.get("busy")) || "true".equals(p.get("busy")));
+        String json = lab.start(params);
+        if (json == null) throw new HttpError(429, "TOO_MANY_RUNS");
+        reply(ex, 200, json);
+    }
+
+    private void labPoll(HttpExchange ex, Map<String, String> p) throws Exception {
+        String json = lab.poll(p.getOrDefault("id", ""), intParam(p, "since", 0));
+        if (json == null) throw new HttpError(404, "NO_SUCH_RUN");
+        reply(ex, 200, json);
+    }
+
+    private void labStop(HttpExchange ex, Map<String, String> p) throws Exception {
+        lab.stop(p.getOrDefault("id", ""));
+        reply(ex, 200, "{\"result\":\"OK\"}");
+    }
+
     // -------------------------------------------------------------------- JSON
     private String docJson() throws InterruptedException {
         StringBuilder sb = new StringBuilder("{\"sections\":[");
@@ -175,6 +207,13 @@ public class ApiHandler implements HttpHandler {
               .append(",\"waitingWriters\":").append(s.waitingWriters())
               .append(",\"writerActive\":").append(s.writerActive())
               .append(",\"version\":").append(s.version()).append('}');
+        }
+        sb.append("],\"people\":[");
+        first = true;
+        for (String name : presence.names()) {
+            if (!first) sb.append(',');
+            first = false;
+            sb.append(Util.json(name));
         }
         sb.append("],\"log\":[");
         first = true;

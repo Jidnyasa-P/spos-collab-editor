@@ -40,6 +40,9 @@ public class SelfTests {
         leaseExpiry();
         commitWaitsForReaders();
 
+        System.out.println("Race Lab (race conditions with and without the lock)");
+        raceLab();
+
         System.out.println("Helpers and storage");
         helpers();
         persistence();
@@ -167,6 +170,25 @@ public class SelfTests {
         t.rw.readUnlock();
         Config.writeWaitMs = saved;
         check("TC14 commit answers BUSY if readers never leave", busy.result() == Section.Result.BUSY);
+    }
+
+    // -------------------------------------------------------------- race lab
+    static void raceLab() throws Exception {
+        RaceLab.Params p = new RaceLab.Params(4, 2, 5, 20, false);
+        RaceLab.Listener quiet = new RaceLab.Listener() {
+            public void actor(boolean safe, String who, String state) { }
+            public void log(boolean safe, String kind, String text) { }
+            public void stats(boolean safe, int c, int o, int e, int l, int r, int i, int ri, int wi, int ww) { }
+        };
+        RaceLab.Result unsafe = RaceLab.run(false, p, quiet, () -> false);
+        RaceLab.Result safe = RaceLab.run(true, p, quiet, () -> false);
+        check("TC21 without a lock updates are lost (counter " + unsafe.finalCounter() + " of " + unsafe.expected() + ")",
+              unsafe.lost() > 0 && unsafe.finalCounter() < unsafe.expected());
+        check("TC22 with the lock nothing is lost (counter " + safe.finalCounter() + " of " + safe.expected() + ")",
+              safe.lost() == 0 && safe.finalCounter() == safe.expected() && safe.finalMirror() == safe.expected());
+        check("TC23 with the lock readers never see a half-finished update (" + safe.reads() + " reads)",
+              safe.inconsistentReads() == 0 && safe.reads() > 0);
+        System.out.println("       (info) without the lock readers saw " + unsafe.inconsistentReads() + " inconsistent reads");
     }
 
     // --------------------------------------------------------------- helpers

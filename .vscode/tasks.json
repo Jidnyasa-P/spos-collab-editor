@@ -29,6 +29,15 @@
       "problemMatcher": []
     },
     {
+      "label": "Guided demo (loaddemo)",
+      "type": "shell",
+      "windows": { "command": ".\\loaddemo.bat" },
+      "linux":   { "command": "sh scripts/loaddemo.sh" },
+      "osx":     { "command": "sh scripts/loaddemo.sh" },
+      "presentation": { "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
       "label": "Lock demo (console)",
       "type": "shell",
       "windows": { "command": ".\\demo.bat" },

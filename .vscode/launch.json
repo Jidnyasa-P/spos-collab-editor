@@ -35,6 +35,14 @@
     },
     {
       "type": "java",
+      "name": "Run Guided Demo (loaddemo)",
+      "request": "launch",
+      "mainClass": "com.spos.editor.LoadDemo",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "java",
       "name": "Run HTTP Load Test (server must be running)",
       "request": "launch",
       "mainClass": "com.spos.editor.HttpLoadTest",

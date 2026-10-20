@@ -1,6 +1,6 @@
 # Test cases
 
-"Automated" rows are checked by `SelfTests` / `StressTest` / `HttpLoadTest`. "Manual" rows are done in the browser.
+"Automated" rows are checked by `SelfTests` / `StressTest` / `HttpLoadTest` / `loaddemo`. "Manual" rows are done in the browser.
 Fill the **Actual** and **Status** columns from your own run and keep a screenshot for each manual case.
 
 | ID | Type | Scenario | Expected | Actual | Status |
@@ -19,19 +19,25 @@ Fill the **Actual** and **Status** columns from your own run and keep a screensh
 | TC12 | Automated | Heartbeat renew | Claim stays alive | | |
 | TC13 | Automated | Commit while a reader is inside | Waits, then succeeds | | |
 | TC14 | Automated | Readers never leave | Commit answers BUSY | | |
+| TC21 | Automated | Race Lab without a lock | Updates are lost (counter below expected) | | |
+| TC22 | Automated | Race Lab with the lock | Counter equals expected, mirror equal, 0 lost | | |
+| TC23 | Automated | Race Lab readers with the lock | 0 inconsistent reads | | |
 | TC15-18 | Automated | Name validation, JSON escaping, form parsing, data-file escaping | Correct output | | |
 | TC19, TC20 | Automated | Save and reload; reset | Text and version survive; reset restores seed | | |
-| TC21 | Automated | `StressTest` part 1 | 0 violations, `a == b` | | |
-| TC22 | Automated | `StressTest` part 2 | commits = final version | | |
-| TC23 | Automated | `HttpLoadTest` | version growth = successful commits | | |
-| TC24 | Manual | Three browser windows read together | All see all sections | | |
-| TC25 | Manual | Asha edits a section; Ravi presses Edit on it | Ravi sees "Asha is editing" and is refused | | |
-| TC26 | Manual | Asha and Ravi edit different sections | Both succeed | | |
-| TC27 | Manual | Asha saves | Others update live, version +1 | | |
-| TC28 | Manual | Asha closes the tab while editing; wait 60 s | Lease expires, Ravi can claim | | |
-| TC29 | Manual | Read hold 4000 ms, reload two windows | Teal reader dots appear | | |
-| TC30 | Manual | Save hold 3000 ms, save | Rail turns solid amber, readers wait | | |
-| TC31 | Manual | Text with quotes, `<`, emoji, new lines | Shown correctly, no broken page | | |
-| TC32 | Manual | Name `<b>` or 21 characters | Rejected with a message | | |
-| TC33 | Manual | Stop the server, then restart it | Page shows Reconnecting, then Live | | |
-| TC34 | Manual | Open on a phone | No sideways scrolling | | |
+| TC24 | Automated | `StressTest` part 1 (unprotected ints) | 0 violations, `a == b` | | |
+| TC25 | Automated | `StressTest` part 2 | commits = final version | | |
+| TC26 | Automated | `HttpLoadTest` | version growth = successful commits | | |
+| TC27 | Automated | `loaddemo` scene 4: eight simultaneous claims | exactly 1 granted, 7 refused | | |
+| TC28 | Manual | Three browser windows read together | All see all sections, names in "People here" | | |
+| TC29 | Manual | Asha edits a section; Ravi presses Edit on it | Ravi sees "Locked by Asha" and is refused | | |
+| TC30 | Manual | Asha and Ravi edit different sections | Both succeed | | |
+| TC31 | Manual | Asha saves | Others update (live or within about a second), version +1 | | |
+| TC32 | Manual | Asha closes the tab while editing; wait 60 s | Lease expires, Ravi can claim | | |
+| TC33 | Manual | Slow motion: reads 4000 ms, reload two windows | Teal reader dots appear | | |
+| TC34 | Manual | Slow motion: saves 3000 ms, save | Rail turns solid amber, readers wait | | |
+| TC35 | Manual | Race Lab, defaults | Left side loses updates; right side reaches the expected counter | | |
+| TC36 | Manual | Race Lab with Busy readers | Writers wait several seconds on the right | | |
+| TC37 | Manual | Text with quotes, `<`, emoji, new lines | Shown correctly, no broken page | | |
+| TC38 | Manual | Name `<b>` or 21 characters | Rejected with a message | | |
+| TC39 | Manual | Open through a Cloudflare quick tunnel | Works; header says Reconnecting; updates arrive by polling | | |
+| TC40 | Manual | Open on a phone and in dark mode | No sideways scrolling; readable | | |

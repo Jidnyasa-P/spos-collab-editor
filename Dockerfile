@@ -13,5 +13,5 @@ COPY static ./static
 ENV DATA_FILE=/app/data/document.db
 USER app
 EXPOSE 8080
-# The server reads the PORT variable that Render / Railway / Fly provide (default 8080).
+# Optional: only needed if you want to run the app in a container. The PORT variable is honoured (default 8080).
 CMD ["java", "-cp", "out", "com.spos.editor.Server"]

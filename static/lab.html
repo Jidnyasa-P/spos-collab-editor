@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Race Lab: see what the lock prevents</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2316222c'/%3E%3Ccircle cx='10.5' cy='11' r='3.3' fill='%234cc3cf'/%3E%3Ccircle cx='21.5' cy='11' r='3.3' fill='%234cc3cf'/%3E%3Crect x='7.5' y='18.5' width='17' height='5.5' rx='2.7' fill='%23f0a05a'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="top"></header>
+
+  <main class="lab">
+    <section class="lab-intro">
+      <h1>Race Lab</h1>
+      <p>Run the same job twice, side by side: once with nothing protecting the shared data, and once with the reader-priority lock from the editor. Everything is slowed down so you can watch it happen.</p>
+    </section>
+
+    <section class="controls" aria-label="Experiment settings">
+      <ol class="howto">
+        <li>Press <strong>Run both</strong>. Several writers each add 1 to a shared counter, and readers keep checking that the counter and its mirror copy agree.</li>
+        <li>Watch the left side. Amber chips are writing. When two writers collide, the log reports a lost update.</li>
+        <li>Compare the final numbers. The correct counter is writers times increments.</li>
+      </ol>
+      <div class="control-grid">
+        <div><label for="writers">Writers <output id="writersOut">4</output></label><input id="writers" type="range" min="2" max="6" value="4"></div>
+        <div><label for="readers">Readers <output id="readersOut">2</output></label><input id="readers" type="range" min="1" max="5" value="2"></div>
+        <div><label for="ops">Increments per writer <output id="opsOut">5</output></label><input id="ops" type="range" min="2" max="12" value="5"></div>
+        <div><label for="pace">Pace <output id="paceOut">Medium</output></label><input id="pace" type="range" min="1" max="5" value="3"></div>
+        <label class="check" for="busy"><input id="busy" type="checkbox"><span>Busy readers. They hardly ever leave, so you can see writers wait (this is writer starvation).</span></label>
+      </div>
+      <div class="control-actions">
+        <button id="run" class="btn" type="button">Run both</button>
+        <button id="stop" class="btn secondary" type="button" disabled>Stop</button>
+        <span id="runInfo" class="muted" role="status"></span>
+      </div>
+    </section>
+
+    <section class="duel" aria-label="Results side by side" id="duel"></section>
+
+    <section id="verdict" class="verdict" hidden aria-live="polite"></section>
+
+    <section class="explain" aria-labelledby="whyTitle">
+      <h2 id="whyTitle">What you are looking at</h2>
+      <div class="explain-grid">
+        <div>
+          <h3>A lost update</h3>
+          <p>Two writers read the same value, both add one, and both write the same answer. One increment is gone, and nothing reports an error. This is the classic race condition.</p>
+<pre class="timeline">counter = 5
+Writer A reads 5      Writer B reads 5
+Writer A writes 6     Writer B writes 6   (should be 7)</pre>
+        </div>
+        <div>
+          <h3>An inconsistent read</h3>
+          <p>A reader looks at the counter and its mirror while a writer has changed only one of them. The reader sees a state that was never meant to exist. In a document this would be half of an edit.</p>
+        </div>
+        <div>
+          <h3>How the lock fixes both</h3>
+          <p>A writer takes the write lock before it reads and releases it only after both values are updated. Writers take turns, and no reader can slip in the middle. Readers share the read side, so they never block one another.</p>
+        </div>
+        <div>
+          <h3>The price: reader priority</h3>
+          <p>While any reader is inside, new readers walk straight in and a waiting writer has to wait. Tick <em>Busy readers</em> and run again to watch writers wait for seconds. That is starvation, the known weakness of this variant.</p>
+        </div>
+      </div>
+      <p class="muted">The editor page uses exactly this lock for every section. <a href="index.html">Go back to the editor</a> and try it with two windows.</p>
+    </section>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="config.js"></script>
+  <script src="common.js"></script>
+  <script src="lab.js"></script>
+</body>
+</html>
